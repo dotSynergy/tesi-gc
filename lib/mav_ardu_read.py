@@ -6,16 +6,19 @@ from pymavlink import mavutil
 
 from lib.blackboard import MAVMessage
 
-cur_lat: float = 0.0
-cur_lng: float = 0.0
-cur_alt: int = 0
+cur_lat = 0.0
+cur_lng = 0.0
+cur_alt = 0
+is_airborne = False
 
 
 def handle_heartbeat(msg):
+	global is_airborne
 	mode = mavutil.mode_string_v10(msg)
 	is_armed = msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED
 	is_enabled = msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_GUIDED_ENABLED
-	print(msg)
+	if not msg.type == mavutil.mavlink.MAV_TYPE_ONBOARD_CONTROLLER:
+		is_airborne = (is_armed > 0) & ((msg.system_status & mavutil.mavlink.MAV_STATE_ACTIVE) > 0)
 
 def message_bb(bb, pos: int, name: str, var):
 
@@ -25,12 +28,17 @@ def message_bb(bb, pos: int, name: str, var):
 		m.lat = cur_lat
 		m.lng = cur_lng
 		m.alt = cur_alt
+		m.is_airborne = is_airborne
 
 		bb.produce(m)
 
 	bb.modify(pos, name, var)
 
 def read_loop(m, bb):
+
+	global cur_lng
+	global cur_lat
+	global cur_alt
 
 	while(True):
 
@@ -59,9 +67,9 @@ def read_loop(m, bb):
 		elif msg_type == "ARDU_AIR_PPM":
 			message_bb(bb, msg.cnt, 'air_ppm', msg.ppm)
 		elif msg_type == "GLOBAL_POSITION_INT":
-			cur_lat = msg.lat
-			cur_lng = msg.lon
-			cur_alt = msg.alt
+			cur_lat = msg.lat/10000000
+			cur_lng = msg.lon/10000000
+			cur_alt = msg.alt/1000
 		elif msg_type == "HEARTBEAT":
 			handle_heartbeat(msg)
 

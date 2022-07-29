@@ -11,6 +11,7 @@ class MAVMessage(object):
 	lat: int = None
 	lng: int = None
 	alt: int = None
+	is_airborne: bool = False
 
 	def __init__(self, cnt):
 		self.cnt = cnt
